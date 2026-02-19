@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Ping Pong</title>
+<style>
+  :root {
+    --glass-bg: rgba(255,255,255,0.18);
+    --glass-border: rgba(255,255,255,0.45);
+    --glass-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    --glass-blur: blur(28px) saturate(1.8);
+    --radius-xl: 28px;
+    --radius-lg: 20px;
+    --radius-md: 16px;
+    --radius-pill: 100px;
+    --font: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    --text-primary: rgba(10,10,20,0.92);
+    --text-secondary: rgba(10,10,20,0.52);
+    --accent: rgba(0,122,255,1);
+    --accent-soft: rgba(0,122,255,0.13);
+    --red: rgba(255,59,48,1);
+    --red-soft: rgba(255,59,48,0.13);
+    --green: rgba(52,199,89,1);
+    --green-soft: rgba(52,199,89,0.13);
+    --reserved-stripe: rgba(255,59,48,0.07);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { height: 100%; }
+
+  body {
+    font-family: var(--font);
+    min-height: 100vh;
+    background: #e8eaf6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ======= ANIMATED BACKGROUND ======= */
+  .bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background: linear-gradient(160deg, #dce8f7 0%, #f0e8f7 30%, #e8f0f7 60%, #f7f0e8 100%);
+  }
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.55;
+    animation: blobFloat linear infinite;
+    will-change: transform;
+  }
+  .blob1 { width: 600px; height: 600px; background: radial-gradient(circle, #a8d4ff 0%, #c8e8ff 60%, transparent 80%); top: -120px; left: -100px; animation-duration: 22s; animation-delay: 0s; }
+  .blob2 { width: 500px; height: 500px; background: radial-gradient(circle, #e8d0ff 0%, #f0e0ff 60%, transparent 80%); top: 30%; right: -120px; animation-duration: 28s; animation-delay: -8s; }
+  .blob3 { width: 400px; height: 400px; background: radial-gradient(circle, #ffd0e8 0%, #ffe8f0 60%, transparent 80%); bottom: 10%; left: 10%; animation-duration: 20s; animation-delay: -14s; }
+  .blob4 { width: 350px; height: 350px; background: radial-gradient(circle, #d0f0e0 0%, #e0f8ec 60%, transparent 80%); bottom: 20%; right: 5%; animation-duration: 25s; animation-delay: -5s; }
+  .blob5 { width: 280px; height: 280px; background: radial-gradient(circle, #fff8c0 0%, #fffce0 60%, transparent 80%); top: 50%; left: 40%; animation-duration: 18s; animation-delay: -10s; }
+
+  @keyframes blobFloat {
+    0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+    25%  { transform: translate(30px, -40px) scale(1.05) rotate(5deg); }
+    50%  { transform: translate(-20px, 30px) scale(0.97) rotate(-3deg); }
+    75%  { transform: translate(40px, 20px) scale(1.03) rotate(8deg); }
+    100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  }
+
+  /* glass sheen overlay */
+  .bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.25) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+    pointer-events: none;
+  }
+
+  /* ======= LAYOUT ======= */
+  .page {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    padding: 0 16px 40px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ======= DYNAMIC ISLAND ======= */
+  .dynamic-island {
+    position: sticky;
+    top: 16px;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0;
+    padding-top: env(safe-area-inset-top, 16px);
+  }
+
+  .island-capsule {
+    background: rgba(10,10,20,0.82);
+    backdrop-filter: blur(30px) saturate(2);
+    -webkit-backdrop-filter: blur(30px) saturate(2);
+    border-radius: var(--radius-pill);
+    padding: 10px 28px 12px;
+    text-align: center;
+    min-width: 180px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.10);
+    transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .island-time {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: rgba(255,255,255,0.96);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .island-date {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.45);
+    margin-top: 2px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ======= HEADER ======= */
+  .header {
+    padding: 28px 0 20px;
+    text-align: center;
+  }
+
+  .header-title {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .header-subtitle {
+    margin-top: 8px;
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .header-subtitle-he {
+    font-size: 14px;
+    color: rgba(10,10,20,0.36);
+    margin-top: 2px;
+    direction: rtl;
+  }
+
+  /* ======= GLASS CARD ======= */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.6);
+  }
+
+  /* ======= GRID ======= */
+  .slots-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* ======= SLOT CARD ======= */
+  .slot {
+    background: rgba(255,255,255,0.22);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.7);
+    padding: 14px 14px 14px;
+    cursor: pointer;
+    transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s ease, background 0.22s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slot::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+  }
+
+  .slot:active {
+    transform: scale(0.96);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+  }
+
+  .slot.available:hover {
+    background: rgba(255,255,255,0.35);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.8);
+    transform: translateY(-1px);
+  }
+
+  .slot.reserved {
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,59,48,0.2);
+    box-shadow: 0 2px 12px rgba(255,59,48,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+
+  .slot-time {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+    line-height: 1;
+    transition: all 0.3s ease;
+  }
+
+  .slot.reserved .slot-time {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+    text-decoration-color: rgba(255,59,48,0.6);
+    text-decoration-thickness: 2px;
+  }
+
+  .slot-status {
+    margin-top: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .slot.reserved .slot-status {
+    color: rgba(255,59,48,0.7);
+  }
+
+  .slot-name {
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .slot.reserved .slot-name {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .slot-dot {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 2px rgba(52,199,89,0.2);
+    transition: all 0.3s ease;
+  }
+
+  .slot.reserved .slot-dot {
+    background: var(--red);
+    box-shadow: 0 0 0 2px rgba(255,59,48,0.2);
+  }
+
+  /* ======= MODAL ======= */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0,0,0,0.28);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .modal-backdrop.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 480px;
+    background: rgba(248,248,252,0.85);
+    backdrop-filter: blur(40px) saturate(2);
+    -webkit-backdrop-filter: blur(40px) saturate(2);
+    border: 1px solid rgba(255,255,255,0.7);
+    border-bottom: none;
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.9);
+    padding: 0 0 32px;
+    transform: translateY(100%);
+    transition: transform 0.5s cubic-bezier(0.32,0.72,0,1);
+    overflow: hidden;
+  }
+
+  .modal-backdrop.open .modal {
+    transform: translateY(0);
+  }
+
+  .modal-handle {
+    width: 36px; height: 5px;
+    background: rgba(0,0,0,0.18);
+    border-radius: 100px;
+    margin: 12px auto 0;
+  }
+
+  .modal-header {
+    padding: 20px 24px 0;
+  }
+
+  .modal-slot-time {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--text-primary);
+  }
+
+  .modal-slot-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  .modal-body {
+    padding: 20px 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .input-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    padding-left: 4px;
+  }
+
+  .glass-input {
+    background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 17px;
+    font-family: var(--font);
+    font-weight: 500;
+    color: var(--text-primary);
+    outline: none;
+    width: 100%;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.04), 0 1px 0 rgba(255,255,255,0.9);
+    transition: all 0.22s ease;
+    -webkit-appearance: none;
+  }
+
+  .glass-input:focus {
+    background: rgba(255,255,255,0.75);
+    border-color: var(--accent);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.04), 0 0 0 3px rgba(0,122,255,0.12);
+  }
+
+  .glass-input::placeholder { color: rgba(10,10,20,0.28); }
+
+  .modal-actions {
+    padding: 16px 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 16px;
+    font-size: 17px;
+    font-family: var(--font);
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(0,122,255,0.35);
+  }
+
+  .btn-primary:hover { background: rgba(0,100,220,1); }
+
+  .btn-danger {
+    background: var(--red);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(255,59,48,0.3);
+  }
+
+  .btn-cancel {
+    background: rgba(120,120,130,0.14);
+    color: var(--text-secondary);
+    box-shadow: none;
+  }
+
+  .error-msg {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--red);
+    text-align: center;
+    min-height: 18px;
+    transition: opacity 0.2s;
+  }
+
+  /* ======= SUCCESS OVERLAY ======= */
+  .success-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .success-overlay.show { opacity: 1; }
+
+  .success-bubble {
+    background: rgba(52,199,89,0.18);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(52,199,89,0.35);
+    border-radius: 28px;
+    padding: 28px 36px;
+    text-align: center;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+    transform: scale(0.85);
+    transition: transform 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .success-overlay.show .success-bubble { transform: scale(1); }
+
+  .checkmark {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--green);
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(52,199,89,0.4);
+  }
+
+  .checkmark svg { width: 28px; height: 28px; }
+
+  .success-text {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.4px;
+  }
+
+  /* ======= ANIMATIONS ======= */
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    15% { transform: translateX(-8px); }
+    30% { transform: translateX(8px); }
+    45% { transform: translateX(-6px); }
+    60% { transform: translateX(6px); }
+    75% { transform: translateX(-3px); }
+    90% { transform: translateX(3px); }
+  }
+
+  .shake { animation: shake 0.5s ease; }
+
+  .red-glow {
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.04), 0 0 0 3px rgba(255,59,48,0.2) !important;
+    border-color: rgba(255,59,48,0.5) !important;
+  }
+
+  @keyframes checkDraw {
+    from { stroke-dashoffset: 40; }
+    to { stroke-dashoffset: 0; }
+  }
+
+  .checkmark path {
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+  }
+
+  .success-overlay.show .checkmark path {
+    animation: checkDraw 0.4s ease 0.1s forwards;
+  }
+
+  /* ======= DATE SECTION HEADER ======= */
+  .section-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: rgba(10,10,20,0.35);
+    padding: 20px 4px 10px;
+  }
+
+  /* ======= MODAL MODE TOGGLE ======= */
+  .mode-tabs {
+    display: flex;
+    gap: 8px;
+    background: rgba(120,120,130,0.1);
+    border-radius: 12px;
+    padding: 4px;
+    margin: 16px 24px 0;
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 9px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all 0.22s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mode-tab.active {
+    background: rgba(255,255,255,0.9);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .form-section { display: none; }
+  .form-section.active { display: flex; flex-direction: column; gap: 12px; }
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+  <div class="blob blob4"></div>
+  <div class="blob blob5"></div>
+</div>
+
+<div class="page">
+
+  <!-- Dynamic Island -->
+  <div class="dynamic-island">
+    <div class="island-capsule">
+      <div class="island-time" id="clock">--:--</div>
+      <div class="island-date" id="dateDisplay"></div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-title">Ping Pong</div>
+    <div class="header-subtitle">Book your table</div>
+    <div class="header-subtitle-he">הזמן את השולחן שלך</div>
+  </div>
+
+  <!-- Slots -->
+  <div class="section-label">Available Times</div>
+  <div class="slots-grid" id="slotsGrid"></div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+
+    <div class="modal-header">
+      <div class="modal-slot-time" id="modalTime"></div>
+      <div class="modal-slot-label" id="modalLabel"></div>
+    </div>
+
+    <!-- Mode tabs (shown only for reserved slots) -->
+    <div class="mode-tabs" id="modeTabs" style="display:none">
+      <button class="mode-tab" id="tabBook" onclick="setMode('book')">Reserve</button>
+      <button class="mode-tab active" id="tabCancel" onclick="setMode('cancel')">Cancel</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Book form -->
+      <div class="form-section" id="bookForm">
+        <div class="input-group">
+          <div class="input-label">Your Name</div>
+          <input class="glass-input" id="nameInput" type="text" placeholder="Enter name" autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="input-group">
+          <div class="input-label">4-Digit Code</div>
+          <input class="glass-input" id="codeInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="0000" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Cancel form -->
+      <div class="form-section" id="cancelForm">
+        <div class="input-group">
+          <div class="input-label">Enter Code to Cancel</div>
+          <input class="glass-input" id="cancelCodeInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="0000" autocomplete="off">
+        </div>
+      </div>
+
+    </div>
+
+    <div style="padding: 6px 24px 0; min-height: 24px;">
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="actionBtn" onclick="handleAction()">Reserve</button>
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Success Overlay -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-bubble">
+    <div class="checkmark">
+      <svg viewBox="0 0 28 28" fill="none">
+        <path d="M6 14l6 6 10-12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="success-text" id="successText">Reserved</div>
+  </div>
+</div>
+
+<script>
+const ADMIN_CODE = '2609';
+const STORAGE_KEY = 'pp_reservations_v2';
+
+let reservations = {};
+let currentSlot = null;
+let currentMode = 'book';
+let todayKey = '';
+
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function loadReservations() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const data = JSON.parse(raw);
+    if (data.date !== getTodayKey()) return {};
+    return data.slots || {};
+  } catch { return {}; }
+}
+
+function saveReservations() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: getTodayKey(), slots: reservations }));
+}
+
+function generateSlots() {
+  const slots = [];
+  for (let h = 8; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const hStr = String(h).padStart(2, '0');
+      const mStr = String(m).padStart(2, '0');
+      slots.push(`${hStr}:${mStr}`);
+    }
+  }
+  return slots;
+}
+
+function renderSlots() {
+  const grid = document.getElementById('slotsGrid');
+  const slots = generateSlots();
+  grid.innerHTML = '';
+
+  slots.forEach(time => {
+    const res = reservations[time];
+    const div = document.createElement('div');
+    div.className = `slot ${res ? 'reserved' : 'available'}`;
+    div.onclick = () => openModal(time);
+    div.innerHTML = `
+      <div class="slot-dot"></div>
+      <div class="slot-time">${time}</div>
+      <div class="slot-status">${res ? 'Reserved' : 'Open'}</div>
+      ${res ? `<div class="slot-name">${escHtml(res.name)}</div>` : ''}
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function openModal(time) {
+  currentSlot = time;
+  const res = reservations[time];
+  document.getElementById('modalTime').textContent = time;
+
+  const modeTabs = document.getElementById('modeTabs');
+  const bookForm = document.getElementById('bookForm');
+  const cancelForm = document.getElementById('cancelForm');
+  const actionBtn = document.getElementById('actionBtn');
+
+  clearError();
+  clearInputs();
+
+  if (res) {
+    document.getElementById('modalLabel').textContent = `Reserved by ${res.name}`;
+    modeTabs.style.display = 'flex';
+    setMode('cancel');
+  } else {
+    document.getElementById('modalLabel').textContent = 'Available';
+    modeTabs.style.display = 'none';
+    bookForm.classList.add('active');
+    cancelForm.classList.remove('active');
+    document.getElementById('tabBook').classList.add('active');
+    document.getElementById('tabCancel').classList.remove('active');
+    actionBtn.textContent = 'Reserve';
+    actionBtn.className = 'btn btn-primary';
+    currentMode = 'book';
+  }
+
+  document.getElementById('modalBackdrop').classList.add('open');
+  haptic();
+
+  setTimeout(() => {
+    if (currentMode === 'book') document.getElementById('nameInput').focus();
+    else document.getElementById('cancelCodeInput').focus();
+  }, 400);
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  const bookForm = document.getElementById('bookForm');
+  const cancelForm = document.getElementById('cancelForm');
+  const tabBook = document.getElementById('tabBook');
+  const tabCancel = document.getElementById('tabCancel');
+  const actionBtn = document.getElementById('actionBtn');
+
+  clearError();
+
+  if (mode === 'book') {
+    bookForm.classList.add('active');
+    cancelForm.classList.remove('active');
+    tabBook.classList.add('active');
+    tabCancel.classList.remove('active');
+    actionBtn.textContent = 'Reserve';
+    actionBtn.className = 'btn btn-primary';
+  } else {
+    cancelForm.classList.add('active');
+    bookForm.classList.remove('active');
+    tabCancel.classList.add('active');
+    tabBook.classList.remove('active');
+    actionBtn.textContent = 'Cancel Reservation';
+    actionBtn.className = 'btn btn-danger';
+  }
+}
+
+function closeModal() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  clearInputs();
+  clearError();
+}
+
+function clearInputs() {
+  document.getElementById('nameInput').value = '';
+  document.getElementById('codeInput').value = '';
+  document.getElementById('cancelCodeInput').value = '';
+}
+
+function clearError() {
+  document.getElementById('errorMsg').textContent = '';
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+
+  // Shake the active form input
+  const input = currentMode === 'cancel'
+    ? document.getElementById('cancelCodeInput')
+    : document.getElementById('codeInput');
+
+  input.classList.remove('shake', 'red-glow');
+  void input.offsetWidth;
+  input.classList.add('shake', 'red-glow');
+  setTimeout(() => input.classList.remove('red-glow'), 800);
+
+  haptic(true);
+}
+
+function handleAction() {
+  if (currentMode === 'book') {
+    doReserve();
+  } else {
+    doCancel();
+  }
+}
+
+function doReserve() {
+  const name = document.getElementById('nameInput').value.trim();
+  const code = document.getElementById('codeInput').value.trim();
+
+  if (!name) { showError('Please enter your name.'); return; }
+  if (!/^\d{4}$/.test(code)) { showError('Enter a 4-digit code.'); return; }
+  if (reservations[currentSlot]) { showError('Already reserved.'); return; }
+
+  reservations[currentSlot] = { name, code };
+  saveReservations();
+  closeModal();
+  renderSlots();
+  showSuccess(`${currentSlot} Reserved`);
+}
+
+function doCancel() {
+  const code = document.getElementById('cancelCodeInput').value.trim();
+  const res = reservations[currentSlot];
+
+  if (!res) { closeModal(); return; }
+  if (code !== res.code && code !== ADMIN_CODE) {
+    showError('Incorrect code.');
+    return;
+  }
+
+  delete reservations[currentSlot];
+  saveReservations();
+  closeModal();
+  renderSlots();
+  showSuccess('Reservation Cancelled');
+}
+
+function showSuccess(text) {
+  document.getElementById('successText').textContent = text;
+  const overlay = document.getElementById('successOverlay');
+  overlay.classList.add('show');
+  setTimeout(() => overlay.classList.remove('show'), 1800);
+}
+
+function haptic(strong) {
+  if (navigator.vibrate) {
+    navigator.vibrate(strong ? [20, 30, 20] : [10]);
+  }
+}
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+
+  const newKey = getTodayKey();
+  if (newKey !== todayKey) {
+    todayKey = newKey;
+    reservations = loadReservations();
+    renderSlots();
+  }
+
+  const opts = { weekday:'short', month:'short', day:'numeric' };
+  document.getElementById('dateDisplay').textContent = now.toLocaleDateString('en-US', opts);
+}
+
+// Close on backdrop click
+document.getElementById('modalBackdrop').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Numeric-only enforcement
+['codeInput','cancelCodeInput'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g,'').slice(0,4);
+  });
+});
+
+// Init
+todayKey = getTodayKey();
+reservations = loadReservations();
+updateClock();
+setInterval(updateClock, 1000);
+renderSlots();
+</script>
+</body>
+</html>
